@@ -1,8 +1,10 @@
 import React from 'react'
 import Board from './Board'
 import History from './History'
+import HistoryFunctional from './HistoryFunctional'
 import util from '../util'
 
+let id = 1;
 class Game extends React.Component {
   constructor () {
     super()
@@ -12,28 +14,35 @@ class Game extends React.Component {
       boardCloumn: 3,
       squareList: [],
       currentPlayer: '',
-      nextPlayer: 'X',
-      history: [],
       steps: [],
       wantJumpStep: '',
       winner: '',
       winnerCheers: [],
       isAsc: true,
-      asc_index: -1,
-      dsc_index: -1
+      stepId: '',
+      history: [],
+      stepNumber: 0,
+      xIsNext: true
     };
     this.state.squareList = Array(this.state.boardRow * this.state.boardCloumn).fill('')
     this.restartGame = this.restartGame.bind(this)
     this.jumpTo = this.jumpTo.bind(this)
+
+    this.state.history = [{ squares: this.state.squareList }]
+    this.state.stepNumber = 0
   }
 
   render () {
+    const { stepNumber, history } = this.state
+    const current = history[stepNumber]
+    console.log(current, 'current')
+
     return (
       <div className="">
         <button className="start" onClick={this.restartGame}>restart game</button>
         <div className="board-wrapper">
           <Board
-            squareList={this.state.squareList}
+            squareList={current.squares}
             boardRow={this.state.boardRow}
             boardCloumn={this.state.boardCloumn}
             winnerCheers={this.state.winnerCheers}
@@ -42,11 +51,9 @@ class Game extends React.Component {
         </div>
         <div className="game-info">
           <div>{this.state.winner ? 'Winner' + this.state.winner : 'next Player: ' + (this.state.nextPlayer || 'X')}</div>
-          <History
-            steps={this.state.steps}
+          <HistoryFunctional
+            history={this.state.history}
             isAsc={this.state.isAsc}
-            asc_index={this.state.asc_index}
-            dsc_index={this.state.dsc_index}
             jumpTo={this.jumpTo}
             handleSort={this.handleSort.bind(this)}
           />
@@ -62,73 +69,23 @@ class Game extends React.Component {
     }
 
     // 将棋子填充到棋盘对应位置
-    await this.addChess(i)
+    this.updateHistory(i)
 
-    // 更新历史记录
-    this.recordHistory (i)
-
-    // 判断游戏状态,执行回调方法
-    this.assertGameStatus()
-    .then((status) => {
-      this.gameCallBack(status)
-    })
+    // do winnerCheck? or before?
   }
 
-  async addChess (i) {
-    let tempSquareList = this.state.squareList.slice(0)
-    // 玩家落子之后，之前预判的黑棋/白旗就是当前的棋子
-    const currentPlayer = this.state.nextPlayer
-    tempSquareList[i] = currentPlayer
-    await this.setState(state => {
-      return {
-        squareList: tempSquareList
-      }
+  updateHistory = (i) => {
+    let currentSquares = this.state.history[this.state.stepNumber].squares.slice()
+    const currentPlayer = this.state.xIsNext ? 'X' : 'O'
+    currentSquares[i] = currentPlayer
+    
+    this.setState({
+      history: this.state.history.concat({
+        squares: currentSquares
+      }),
+      xIsNext: !this.state.xIsNext,
+      stepNumber: this.state.stepNumber + 1,
     })
-  }
-
-  async assertNextChess () {
-    await this.setState((state) => {
-      return {
-        nextPlayer: state.nextPlayer === 'O' ? 'X': 'O'
-      }
-    })
-  }
-
-  assertGameStatus () {
-    return new Promise (resolve => {
-      // 游戏继续
-      if (this.state.steps.length < 5) {
-        resolve('continue')
-        return
-      }
-
-      let squares = []
-      // 玩家落子之后的判断，之前预判的下一步黑棋/白棋就是当前的棋子
-      const currentPlayer = this.state.nextPlayer
-      this.state.squareList.forEach((item, index) => {
-        if (item === currentPlayer) {
-          squares.push(index)
-        }
-      })
-      // 出现赢家
-      if (util.isWinner(squares)) {
-        this.setState({
-          winnerCheers: util.isWinner(squares)
-        })
-        resolve('win')
-        return
-      }
-      
-      // 平局也需要结束游戏
-      if ((this.state.steps.length === this.state.boardRow * this.state.boardCloumn) && !this.state.winner) {
-        resolve('tie')
-        return
-      }
-      // 游戏继续
-      resolve('continue')
-    })
-
-
   }
 
   gameCallBack (status) {
@@ -164,57 +121,14 @@ class Game extends React.Component {
     alert(message)
   }
 
-  recordHistory (i) {
-    // 更新历史记录
-    let tempGameHistory = this.state.squareList.slice(0)
-    this.setState({
-      history: tempGameHistory
-    })
-
-    // 记录当前步骤的index
-    let end = ''
-    if (this.state.wantJumpStep) {
-      end = this.state.wantJumpStep + 1
-      this.setState({
-        wantJumpStep: ''
-      })
-    }
-    const tempSteps = this.state.steps.slice(0, end || this.state.steps.length)
-    this.state.isAsc ? tempSteps.push(i) : tempSteps.unshift(i)
-    this.setState({
-      steps: tempSteps
-    })
-  }
-
-  jumpTo (step, index) {
+  jumpTo = (index) => {
     console.log(index, 'index jumpTo')
-    // console.log(this.state.steps, 'step')
-    let tempList = this.state.history.slice(0)
-    const start  = this.state.isAsc ? index + 1 : 0
-    const end = this.state.isAsc ? this.state.steps.length : index
-    // 升序情况，清空[index + 1, length]
-    // 降序情况，清空[0, index)
-    for(let i = start; i < end; i++) {
-      tempList[this.state.steps[i]] = ''
-    }
-
-    // 记录升序/降序情况下当前要去往哪一个历史记录
-    const asc = this.state.isAsc ? index : this.state.steps.length - index - 1
-    const dsc = this.state.isAsc ? this.state.steps.length - index - 1 : index
+    /** 只需要更新当前进行到哪一步即可，这样保留了整个历史记录 */
+    /** 只有在添加棋子的时候，才需要更新历史记录，跳转历史记录，只需要传索引就好，因为每个元素都包含那一个时刻的副本。 */
     this.setState({
-      asc_index: asc
-    })
-    this.setState({
-      dsc_index: dsc
+      stepNumber: index
     })
 
-    this.setState({
-      squareList: tempList
-    })
-
-    this.setState({
-      wantJumpStep: index
-    })
   }
 
   async handleSort () {
