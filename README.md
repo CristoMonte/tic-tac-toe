@@ -1,5 +1,3 @@
-## 游戏逻辑
-![game logic](./xmind.png)
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
 ## Available Scripts
