@@ -1,8 +1,13 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 function History(props) {
-  const { history, isAsc, handleSort, jumpTo } = props;
+  const { history, isAsc, stepNumber, handleSort, jumpTo } = props;
   const [activeIndex, setIndex] = useState(0);
+  useEffect(() => {
+    if (stepNumber === 0) {
+      setIndex(stepNumber)
+    }
+  }, [stepNumber])
 
   const progressList = history.map((historyItems, index, arr) => {
     return (
@@ -11,7 +16,7 @@ function History(props) {
         className="game-history-item"
         onClick={() => {
           setIndex(index)
-          jumpTo(index);
+          jumpTo(index)
         }}
         style={{
           color: activeIndex === index ? "blue" : "black"
