@@ -4,6 +4,8 @@ import './style/index.css';
 
 import Game from './components/Game'
 
+console.log('test')
+
 // function App() {
 //   return (
 //     <div className="App">
